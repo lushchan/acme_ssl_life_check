@@ -10,11 +10,14 @@ for i in $AcmeDate ; do
   ExprDate=($(echo | openssl s_client -showcerts -servername $i -connect $i:443 2>/dev/null | openssl x509 -inform pem -noout -text | egrep '(Not After : )' | sed 's/.*Not\ After\ \:\ //g' | { read gmt ; date -d "$gmt" +"%s" ; }))
 #Get date in epoch when certificate must be updated
   UpdDate=$(expr $ExprDate - $Month)
+#deprecated: Convert to CEST
   ExprDateCEST=`date -d @$ExprDate`
+# Get days in epoch to expire date
   UntilDayEpoch=$(expr $ExprDate - $CurDate)
+# Covert it to human format
   UntilDay=$(expr $UntilDayEpoch / 60 / 60 / 24)
    if (( CurDate > UpdDate )); then
-      echo "$i expire in $UntilDay days"
+      echo "$i expire in $UntilDay day(s)"
       STATUS+='1'
    else
       STATUS+='0'
@@ -22,7 +25,7 @@ for i in $AcmeDate ; do
 done
 
 if [[ $STATUS =~ "1"  ]]; then
-  echo "Some domain is expired soon. Check full script output"
+#  echo "Some domain is expired soon. Check full script output"
   exit 1
 else
   echo "All domains are OK"
