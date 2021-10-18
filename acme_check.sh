@@ -8,7 +8,7 @@ MonthEpoch="2678400"
 #Path to file with non-acme domains
 ExternalFile="/usr/lib64/nagios/plugins/external"
 # Get domains from acme client
-AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e 's/\*\.//g' | tail -n +3)
+AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e '/\*\./d' | tail -n +3)
 ExternalList=$(echo -e "\n" ; cat $ExternalFile)
 AcmeList+=$ExternalList
 while getopts ":w:c:h" options; do
