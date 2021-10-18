@@ -7,6 +7,10 @@ CurDate=$(date +"%s")
 MonthEpoch="2678400"
 #Path to file with non-acme domains
 ExternalFile="/usr/lib64/nagios/plugins/external"
+#Create file for non-acme domainns if not exist
+if [[ ! -e $ExternalFile ]]; then
+    touch $ExternalFile
+fi
 # Get domains from acme client
 AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e '/\*\./d' | tail -n +3)
 ExternalList=$(echo -e "\n" ; cat $ExternalFile)
