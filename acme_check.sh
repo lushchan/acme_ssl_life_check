@@ -3,18 +3,22 @@
 CurDate=$(date +"%s")
 #debug
 #CurDate="1639394914"
-#30 days in epoch format 
-MonthEpoch="2678400"
+
 #Path to file with non-acme domains
 ExternalFile="/usr/lib64/nagios/plugins/external"
+
 #Create file for non-acme domainns if not exist
 if [[ ! -e $ExternalFile ]]; then
     touch $ExternalFile
 fi
+
 # Get domains from acme client
 AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e '/\*\./d' | tail -n +3)
+# Get domains from external list
 ExternalList=$(echo -e "\n" ; cat $ExternalFile)
+# Concat two lists
 AcmeList+=$ExternalList
+# Get opts for script
 while getopts ":w:c:h" options; do
   case "${options}" in
     w)
@@ -27,7 +31,8 @@ while getopts ":w:c:h" options; do
        echo "Options:"
        echo "-h - help"
        echo "-w - set warning threshold in days"
-       echo "-c - set critical threshold in days" 
+       echo "-c - set critical threshold in days"
+       echo "If you wanna check non-acme certs, place domains in $ExternalFile 1 domain = 1 string"
        exit 0
        ;;
     :)
@@ -51,25 +56,20 @@ fi
 
 #main
 for i in $AcmeList ; do
+# Get expire date
   ExprDate=($(echo | openssl s_client -showcerts -servername $i -connect $i:443 2>/dev/null | openssl x509 -inform pem -noout -text | egrep '(Not After : )' | sed 's/.*Not\ After\ \:\ //g' | { read gmt ; date -d "$gmt" +"%s" ; }))
-#Get date in epoch when certificate must be updated
-  UpdDate=$(expr $ExprDate - $MonthEpoch)
-#deprecated: Convert to CEST
-  ExprDateCEST=`date -d @$ExprDate`
 # Get days in epoch to expire date
   UntilDayEpoch=$(expr $ExprDate - $CurDate)
 # Covert it to human format
   UntilDay=$(expr $UntilDayEpoch / 60 / 60 / 24)
-   if (( CurDate > UpdDate )); then
-      if (( $UntilDay > $CRITICAL )); then
-         echo "$i expire in $UntilDay day(s)"
-         STATUS+='1'
-      elif (( $UntilDay < $CRITICAL )); then
-         echo "$i expire in $UntilDay day(s)"
-         STATUS+='2'
-      fi
-   else
-      STATUS+='0'
+  if (( $UntilDay <= $CRITICAL )); then
+    echo "$i expire in $UntilDay day(s)"
+    STATUS+='2'
+  elif (( $UntilDay <= $WARNING )); then
+    echo "$i expire in $UntilDay day(s)"
+    STATUS+='1'
+  else
+    STATUS+='0'
    fi
 done
 
