@@ -13,11 +13,20 @@ if [[ ! -e $ExternalFile ]]; then
 fi
 
 # Get domains from acme client
-AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e '/\*\./d' | tail -n +3)
+AcmeList=$(/root/.acme.sh/acme.sh --list | awk '{doms=$1" "$3; print doms}' | sed 's/,/\n/g' | sed 's/\s/\n/g' | sed '/^no$/d' | sed -e '/\*\./d' | sed -e '/www\./d' | tail -n +3)
 # Get domains from external list
-ExternalList=$(echo -e "\n" ; cat $ExternalFile)
+ExternalList=$(echo -e "\n" ; cat $ExternalFile | sed -e 's/\,/\n/g' | sed -e 's/\s/\n/g' | sed -e '/^$/d')
 # Concat two lists
 AcmeList+=$ExternalList
+# help func
+Help() {
+echo "Help"
+echo "Options:"
+echo "-h - help"
+echo "-w - set warning threshold in days"
+echo "-c - set critical threshold in days"
+echo "If you wanna check non-acme certs, place domains in $ExternalFile"
+}
 # Get opts for script
 while getopts ":w:c:h" options; do
   case "${options}" in
@@ -27,33 +36,33 @@ while getopts ":w:c:h" options; do
     c)
        CRITICAL=${OPTARG}
        ;;
-    h) echo "Help"
-       echo "Options:"
-       echo "-h - help"
-       echo "-w - set warning threshold in days"
-       echo "-c - set critical threshold in days"
-       echo "If you wanna check non-acme certs, place domains in $ExternalFile 1 domain = 1 string"
+    h) Help
        exit 0
        ;;
     :)
       echo "Error: -${OPTARG} is empty.Please set threshhold in days for -w as warning and -c as critical"
+      Help
       exit 3
       ;;
     *)
-      echo "Unknown argument -${OPTARG}"                                    
+      echo "Unknown argument -${OPTARG}"
+      Help
       exit 3
       ;;
   esac
 done
 
 if [ -z "$WARNING" ] ; then
-        echo "Warning threshold is missing. Check -h for help"
+        echo "WARNING threshold is missing. Check -h for help"
+        echo ""
+        Help
         exit 3
 elif [ -z "$CRITICAL" ] ; then
         echo "CRITICAL threshold is missing. Check -h for help"
+        echo ""
+        Help
         exit 3
 fi
-
 #main
 for i in $AcmeList ; do
 # Get expire date
